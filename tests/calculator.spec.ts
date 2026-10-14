@@ -1,5 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import samples from '../src/fixtures/original-results.json' with { type: 'json' };
+
+async function waitForOfflineCache(page: Page) {
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL === new URL('sw.js', document.baseURI).href, undefined, { timeout: 15000 });
+}
 
 let errors: string[] = [];
 let external: string[] = [];
@@ -12,22 +16,22 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(async () => { expect(errors).toEqual([]); expect(external).toEqual([]); });
 
-test('default recipe, offline-ready indicator and manifest', async ({ page }) => {
+test('default recipe, offline worker and manifest', async ({ page }) => {
   await expect(page.getByTestId('stat-flour')).toHaveText('1705');
   await expect(page.getByTestId('stat-water')).toHaveText('1057');
   await expect(page.locator('.ingredient-table tbody tr')).toHaveCount(6);
-  await expect(page.locator('.offline-status')).toHaveText('Offline ready');
+  await waitForOfflineCache(page);
   const manifest = await page.evaluate(async () => (await fetch(document.querySelector<HTMLLinkElement>('link[rel=manifest]')!.href)).json());
   expect(manifest.display).toBe('standalone'); expect(manifest.orientation).toBe('any');
   expect(manifest.start_url).toBe('./'); expect(manifest.scope).toBe('./');
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
 });
 
-test('offline-ready status remains correct after reopening online', async ({ page }) => {
-  await expect(page.locator('.offline-status')).toHaveText('Offline ready');
+test('offline worker still controls the app after reopening online', async ({ page }) => {
+  await waitForOfflineCache(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; if (!navigator.serviceWorker.controller) await new Promise<void>(resolve => navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true })); });
   await page.reload();
-  await expect(page.locator('.offline-status')).toHaveText('Offline ready');
+  await waitForOfflineCache(page);
 });
 
 test('settings, instructions and persistence use the selected recipe', async ({ page }) => {
@@ -63,13 +67,17 @@ test('stepper controls stop at source calculator limits', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'More pizzas' })).toBeDisabled();
 });
 
-test('install dialog is modal and closes with Escape', async ({ page }) => {
-  await page.getByRole('button', { name: /Install on iPad/ }).click();
-  await expect(page.getByRole('dialog', { name: 'Install on your iPad' })).toBeVisible();
-  await expect(page.getByRole('dialog').getByText('Add to Home Screen')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).not.toBeVisible();
-  await expect(page.getByRole('button', { name: /Install on iPad/ })).toBeFocused();
+test('cleaned UI has normal-sized Settings and Recipe headings', async ({ page }) => {
+  const removed = ['Offline ready', 'Install on iPad', 'Your dough, dialled in.', 'Your pizza settings', 'Settings remembered on this device.', 'Dough-ball weight follows the original calculator’s estimate; ingredient totals may differ.', 'No accounts. No ads. Just pizza.'];
+  for (const text of removed) await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Calculator based on', { exact: false })).toHaveCount(0);
+  await expect(page.locator('.app-footer, .header-actions, .install-dialog')).toHaveCount(0);
+  for (const title of ['01 / SETTINGS', '02 / RECIPE']) {
+    const heading = page.getByRole('heading', { name: title, exact: true });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveCSS('font-size', '20px');
+    expect(await heading.evaluate(e => getComputedStyle(e).fontFamily)).toContain('Inter');
+  }
 });
 
 for (const viewport of [{ name: 'ipad-portrait', width: 834, height: 1194 }, { name: 'ipad-landscape', width: 1194, height: 834 }, { name: 'ipad-large-portrait', width: 1024, height: 1366 }, { name: 'ipad-large-landscape', width: 1366, height: 1024 }, { name: 'ipad-compact-landscape', width: 1024, height: 768 }, { name: 'phone', width: 390, height: 844 }]) {
@@ -79,6 +87,7 @@ for (const viewport of [{ name: 'ipad-portrait', width: 834, height: 1194 }, { n
       const content = document.querySelector('.app-content')!;
       return { width: window.innerWidth, documentWidth: document.documentElement.scrollWidth, scroll: content.scrollHeight, visible: content.clientHeight, targets: [...document.querySelectorAll('button, input[type=range], .gf-row, summary')].filter(e => e.getBoundingClientRect().height > 0).map(e => ({ text: e.getAttribute('aria-label') || e.textContent, height: e.getBoundingClientRect().height })) };
     });
+    for (const heading of ['01 / SETTINGS', '02 / RECIPE']) await expect(page.getByRole('heading', { name: heading, exact: true })).toHaveCSS('font-size', '20px');
     expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.width);
     if (viewport.width >= 800) expect(metrics.scroll).toBeLessThanOrEqual(metrics.visible + 1);
     expect(metrics.targets.filter(t => t.height < 44)).toEqual([]);
@@ -91,7 +100,7 @@ for (const viewport of [{ name: 'ipad-portrait', width: 834, height: 1194 }, { n
 }
 
 test('offline cold reload still calculates and remembers settings', async ({ page, context }) => {
-  await expect(page.locator('.offline-status')).toHaveText('Offline ready');
+  await waitForOfflineCache(page);
   await page.evaluate(async () => { await navigator.serviceWorker.ready; if (!navigator.serviceWorker.controller) await new Promise<void>(resolve => navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true })); });
   await page.getByRole('button', { name: 'Thick', exact: true }).click();
   await page.getByRole('switch').check();
@@ -101,12 +110,8 @@ test('offline cold reload still calculates and remembers settings', async ({ pag
   await expect(page.getByRole('button', { name: 'Thick', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Fewer pizzas' }).click();
   await expect(page.getByRole('slider', { name: 'Number of pizzas' })).toHaveValue('5');
-  await expect(page.locator('.offline-status')).toHaveText('Offline');
   await page.goto('?offline-test=1');
   await expect(page.getByRole('slider', { name: 'Number of pizzas' })).toHaveValue('5');
-  await page.getByRole('button', { name: /Install on iPad/ }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: 'Got it' }).click();
   await context.setOffline(false);
 });
 

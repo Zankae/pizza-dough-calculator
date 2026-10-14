@@ -11,7 +11,7 @@ https://zankae.github.io/pizza-dough-calculator/
 1. Open the link in **Safari**.
 2. Tap **Share → Add to Home Screen**.
 3. Leave **Open as Web App** enabled if that option appears, then tap **Add**.
-4. Open the new Home Screen icon while online and wait for **Offline ready**.
+4. Open the new Home Screen icon while online and allow the initial app download to finish before disconnecting.
 5. The calculator now works without Wi-Fi. Your settings are saved on this device.
 
 The initial download needs internet. The app and Safari may have separate storage. Clearing website data or removing the installed app may delete settings/cached files. Safari controls Home Screen installation; no App Store download is needed.
@@ -28,10 +28,14 @@ The initial download needs internet. The app and Safari may have separate storag
 
 **Important:** the source calculator's dough-ball estimate does not necessarily equal ingredient totals divided by quantity, particularly in gluten-free mode. This app deliberately preserves that estimate, labels it clearly, and reproduces the source's ingredient outputs rather than changing the recipe.
 
+## Interface update
+
+The calculator interface intentionally omits the offline badge, installation button, descriptive headlines and footer notes. **01 / SETTINGS** and **02 / RECIPE** are readable 20px headings. Offline support, saved settings and Safari Home Screen installation still work.
+
 ## Verification
 
 - Recorded all 660 source combinations and checked every summary value, ingredient weight and contextual tip.
-- 1,339 unit/component tests passed.
+- 1,345 unit/component tests passed.
 - 26 Playwright checks passed across Chromium and WebKit using iPad emulation, including offline reloads and remembered settings.
 - Six viewports checked, including iPad portrait/landscape and a phone.
 - Production TypeScript/Vite build and npm security audit passed.

@@ -30,14 +30,35 @@ it('opens the print/save sheet', async () => {
   expect(print).toHaveBeenCalledOnce();
   print.mockRestore();
 });
-it('explains iPad Home Screen installation in a closeable dialog', async () => {
-  const user = userEvent.setup();
+it('omits the offline indicator and iPad installation controls', () => {
   render(<App />);
-  await user.click(screen.getByRole('button', { name: /Install on iPad/ }));
-  expect(screen.getByRole('dialog', { name: 'Install on your iPad' })).toBeVisible();
-  expect(screen.getByText('Add to Home Screen', { exact: false })).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Got it' }));
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Install on iPad/ })).not.toBeInTheDocument();
+  expect(screen.queryAllByText('Offline ready')).toHaveLength(0);
+  expect(screen.queryByText('Install on your iPad')).not.toBeInTheDocument();
+});
+it('omits the removed recipe headline', () => {
+  render(<App />);
+  expect(screen.queryByText("Your dough, dialled in.")).not.toBeInTheDocument();
+});
+it('omits the removed settings headline', () => {
+  render(<App />);
+  expect(screen.queryByText("Your pizza settings")).not.toBeInTheDocument();
+});
+it('omits the removed saved-settings message', () => {
+  render(<App />);
+  expect(screen.queryByText("Settings remembered on this device.")).not.toBeInTheDocument();
+});
+it('omits the removed dough-ball note', () => {
+  render(<App />);
+  expect(screen.queryByText("Dough-ball weight follows the original calculator’s estimate; ingredient totals may differ.")).not.toBeInTheDocument();
+});
+it('omits the removed attribution footer', () => {
+  render(<App />);
+  expect(screen.queryByText(/Calculator based on/)).not.toBeInTheDocument();
+});
+it('omits the removed footer slogan', () => {
+  render(<App />);
+  expect(screen.queryByText("No accounts. No ads. Just pizza.")).not.toBeInTheDocument();
 });
 it('calculates the selected pizzas through the touch controls and remembers them', async () => {
   const user = userEvent.setup();

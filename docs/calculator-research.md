@@ -30,4 +30,4 @@ Recorded the original calculator's rendered results for all 660 combinations: 11
 
 ## Installation
 
-On iPad use Safari → Share → Add to Home Screen → enable Open as Web App if shown → Add. First visit must be online until the offline-ready indicator appears. Safari controls installation; a website cannot install itself on iPad. Home Screen/browser storage may be separate; open the installed app online once before relying on it offline.
+On iPad use Safari → Share → Add to Home Screen → enable Open as Web App if shown → Add. First visit must be online long enough for the app files to be cached. The interface intentionally has no offline-ready indicator. Safari controls installation; a website cannot install itself on iPad. Home Screen/browser storage may be separate; open the installed app online once before relying on it offline.
